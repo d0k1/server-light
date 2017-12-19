@@ -1,33 +1,52 @@
 package com.focusit.serverlight.statistics;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import javax.management.*;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 
-public class Statistic {
+public class Statistic implements StatisticMBean {
 	
-	private final Map<String, StatisticHolder> holders = new HashMap<>();
-	
-	public Statistic() {
-		long startDate = new Date().getTime();
-		holders.put("05m", new StatisticHolder(30*1000, startDate, 48*60*2));
-		holders.put("1m", new StatisticHolder(60*1000, startDate, 48*60));
-		holders.put("5m", new StatisticHolder(5*60*1000, startDate, 48*60/5));
-		holders.put("10m", new StatisticHolder(10*60*1000, startDate, 48*60/10));
-		holders.put("15m", new StatisticHolder(15*60*1000, startDate, 48*60/15));
-		holders.put("30m", new StatisticHolder(30*60*1000, startDate, 48*60/30));
-		holders.put("1h", new StatisticHolder(60*60*1000, startDate, 48));
-		holders.put("2h", new StatisticHolder(2*60*60*1000, startDate, 48/2));
-		holders.put("4h", new StatisticHolder(4*60*60*1000, startDate, 48/4));
-		holders.put("8h", new StatisticHolder(8*60*60*1000, startDate, 48/8));
-		holders.put("12h", new StatisticHolder(12*60*60*1000, startDate, 48/12));
+	private final MeasurementsHolder holder;
+	private final String name;
+
+	public Statistic(String name, long itemDuration, TimeUnit itemDurationUnit, long totalDuration, TimeUnit totalDurationUnit) {
+		this.name = name;
+		holder = new MeasurementsHolder(itemDurationUnit.toMillis(itemDuration), totalDurationUnit.toMillis(totalDuration));
 	}
 	
 	public void addData(double data) {
 		long time = new Date().getTime();
-		holders.values().forEach(holder->{
-			holder.addData(time, data);
-		});
+		holder.addData(time, data);
 	}
-	
+
+	public Map<Long, IntervalStatistics> getRawStatistics(int test){
+		return holder.getAllIntervalStatistics();
+	}
+
+	//@Override
+	public List<List<Object>> getStatistics() {
+		return null;
+	}
+
+	@Override
+	public String getName() {
+		return name;
+	}
+
+	public Map<Long, ConcurrentLinkedQueue<Double>> getRawData(){
+		return holder.getRawDataAllIntervals();
+	}
+
+	public void registerMBean(String name) throws MalformedObjectNameException, MBeanRegistrationException, InstanceAlreadyExistsException, NotCompliantMBeanException {
+		ObjectName mbeanName = new ObjectName(name);
+		new StatisticsBean(this).registerBean(mbeanName);
+	}
+
+	public static void main(String[] args) throws MalformedObjectNameException, InstanceAlreadyExistsException, NotCompliantMBeanException, MBeanRegistrationException, IOException {
+		Statistic stat = new Statistic("test5m",5, TimeUnit.MINUTES, 48, TimeUnit.HOURS);
+		stat.registerMBean("com.focusit.serverlight.statistics:type=Statistic5m");
+		System.in.read();
+	}
 }

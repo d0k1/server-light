@@ -41,7 +41,6 @@ class InternalRecorderSpec extends Specification {
         }
     }
 
-
     def 'rolled over data file must be lesser then previous'() {
         given:
         def recorder = InternalEventRecorderBuilder.builderFor(file.getAbsolutePath()).rolloverStrategy(1000).build();
