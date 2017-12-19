@@ -1,4 +1,4 @@
-package groovy.com.focusit.serverlight.specs.statistic
+package com.focusit.serverlight.specs.statistic
 
 import com.focusit.serverlight.statistics.IntervalStatistics
 import com.focusit.serverlight.statistics.MeasurementsHolder
@@ -43,6 +43,24 @@ class MeasurementsHolderSpec extends Specification {
         stat.min == 1
         stat.count == 2
         stat.sum == 3
+    }
+
+    def "holder can return statistics for the same particular interval multiple times"() {
+        given:
+        MeasurementsHolder holder = new MeasurementsHolder(60 * 60 * 1000, 48 * 60 * 60 * 1000)
+        long date = new Date().getTime()
+
+        when:
+        holder.addData(date, 1.0)
+        holder.addData(date, 2.0)
+
+        IntervalStatistics stat = holder.getIntervalStatistics(date + 2)
+        IntervalStatistics stat2 = holder.getIntervalStatistics(date + 2)
+        then:
+        stat.max == stat2.max
+        stat.min == stat2.min
+        stat.count == stat2.count
+        stat.sum == stat2.sum
     }
 
     def "holder can hold measurements and return statistics for all intervals"() {

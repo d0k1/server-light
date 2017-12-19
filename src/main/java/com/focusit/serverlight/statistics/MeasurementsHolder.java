@@ -106,59 +106,31 @@ public class MeasurementsHolder implements Serializable {
 	class StatisticItem {
 		private ConcurrentLinkedQueue<Double> storage = new ConcurrentLinkedQueue<>();
 		private volatile IntervalStatistics statistics = new IntervalStatistics();
-		private DescriptiveStatistics data = new DescriptiveStatistics();
 
 		public void addData(double item) {
 			storage.add(item);
 		}
 
 		public synchronized void calculate(){
+			DescriptiveStatistics data = new DescriptiveStatistics();
 			storage.forEach(item-> data.addValue(item));
 			IntervalStatistics item = new IntervalStatistics();
-			item.count = getCount();
-			item.max = getMax();
-			item.mean = getMean();
-			item.min = getMin();
-			item.stddev = getStddev();
-			item.p50 = getPercentile(50);
-			item.p95 = getPercentile(95);
-			item.p99 = getPercentile(99);
-			item.p999 = getPercentile(99.9);
-			item.sum = getSum();
+			item.count = data.getN();
+			item.max = data.getMax();
+			item.mean = data.getMean();
+			item.min = data.getMin();
+			item.stddev = data.getStandardDeviation();
+			item.p50 = data.getPercentile(50);
+			item.p95 = data.getPercentile(95);
+			item.p99 = data.getPercentile(99);
+			item.p999 = data.getPercentile(99.9);
+			item.sum = data.getSum();
 
 			statistics = item;
 		}
 
-		private long getCount(){
-			return data.getN();
-		}
-
-		private double getMin(){
-			return data.getMin();
-		}
-
-		private double getMax(){
-			return data.getMax();
-		}
-
-		private double getMean(){
-			return data.getMean();
-		}
-
-		private double getStddev(){
-			return data.getStandardDeviation();
-		}
-
 		public IntervalStatistics getStatistics(){
 			return statistics;
-		}
-
-		public double getPercentile(double p) {
-			return data.getPercentile(p);
-		}
-
-		public double getSum() {
-			return data.getSum();
 		}
 	}
 }
