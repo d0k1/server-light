@@ -3,9 +3,11 @@ package com.focusit.serverlight.statistics;
 import javax.management.openmbean.*;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class IntervalStatistics implements Serializable, CompositeData {
+public class IntervalStatistics implements Serializable {
     public double min;
     public double max;
     public double mean;
@@ -18,41 +20,19 @@ public class IntervalStatistics implements Serializable, CompositeData {
     public long count=0;
     public AtomicLong lastVersion = new AtomicLong(-1);
 
-    @Override
-    public CompositeType getCompositeType() {
-        try {
-            return new CompositeType("IntervalStatistics", "Statistics",
-                    new String[]{"min", "max", "mean", "stddev", "p50", "p95", "p99", "p999", "sum", "count", "lastVersion"},
-                    new String[]{"min", "max", "mean", "std dev", "50%", "95%", "99%", "99.9%", "sum", "count", "last version"},
-                    new OpenType[]{SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.LONG, SimpleType.LONG});
-        } catch (OpenDataException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    @Override
-    public Object get(String key) {
-        return null;
-    }
-
-    @Override
-    public Object[] getAll(String[] keys) {
-        return new Object[0];
-    }
-
-    @Override
-    public boolean containsKey(String key) {
-        return false;
-    }
-
-    @Override
-    public boolean containsValue(Object value) {
-        return false;
-    }
-
-    @Override
-    public Collection<?> values() {
-        return null;
+    Map<String, Object> asMap(){
+        Map<String, Object> result = new HashMap<>();
+        result.put("min", min);
+        result.put("max", max);
+        result.put("mean", mean);
+        result.put("stddev", stddev);
+        result.put("p50", p50);
+        result.put("p95", p95);
+        result.put("p99", p99);
+        result.put("p999", p999);
+        result.put("sum", sum);
+        result.put("count", count);
+        result.put("lastVersion", lastVersion.get());
+        return result;
     }
 }

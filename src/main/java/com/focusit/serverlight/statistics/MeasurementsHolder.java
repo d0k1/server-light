@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Holds measurements grouped by time interval to calculate basic descriptive statistics
@@ -128,10 +129,19 @@ public class MeasurementsHolder implements Serializable {
 		private volatile IntervalStatistics statistics = new IntervalStatistics();
 		private final AtomicLong lastVersion = new AtomicLong();
 		private final AtomicBoolean freezed = new AtomicBoolean(false);
+		private final ReentrantLock calcLock = new ReentrantLock();
 
 		public void freeze(){
-			freezed.set(true);
-			storage.clear();
+			calcLock.lock();
+			try {
+				if(!freezed.get()) {
+					calculate();
+					freezed.set(true);
+					storage.clear();
+				}
+			} finally {
+				calcLock.unlock();
+			}
 		}
 
 		public boolean addData(double item) {
@@ -144,38 +154,43 @@ public class MeasurementsHolder implements Serializable {
 			return true;
 		}
 
-		public synchronized boolean calculate(){
+		public boolean calculate(){
 			IntervalStatistics oldStat = statistics;
 
-			if(oldStat.lastVersion!=null && oldStat.lastVersion.get()==lastVersion.get()){
+			if (oldStat.lastVersion != null && oldStat.lastVersion.get() == lastVersion.get()) {
 				return true;
 			}
 
-			if(freezed.get()){
+			if (freezed.get()) {
 				return false;
 			}
 
-			IntervalStatistics intervalStatistics = new IntervalStatistics();
+			calcLock.lock();
+			try {
+				IntervalStatistics intervalStatistics = new IntervalStatistics();
 
-			if(!storage.isEmpty()){
-				DescriptiveStatistics data = new DescriptiveStatistics();
-				storage.forEach(item-> data.addValue(item));
-				intervalStatistics.count = data.getN();
-				intervalStatistics.max = data.getMax();
-				intervalStatistics.mean = data.getMean();
-				intervalStatistics.min = data.getMin();
-				intervalStatistics.stddev = data.getStandardDeviation();
-				intervalStatistics.p50 = data.getPercentile(50);
-				intervalStatistics.p95 = data.getPercentile(95);
-				intervalStatistics.p99 = data.getPercentile(99);
-				intervalStatistics.p999 = data.getPercentile(99.9);
-				intervalStatistics.sum = data.getSum();
+				if (!storage.isEmpty()) {
+					DescriptiveStatistics data = new DescriptiveStatistics();
+					storage.forEach(item -> data.addValue(item));
+					intervalStatistics.count = data.getN();
+					intervalStatistics.max = data.getMax();
+					intervalStatistics.mean = data.getMean();
+					intervalStatistics.min = data.getMin();
+					intervalStatistics.stddev = data.getStandardDeviation();
+					intervalStatistics.p50 = data.getPercentile(50);
+					intervalStatistics.p95 = data.getPercentile(95);
+					intervalStatistics.p99 = data.getPercentile(99);
+					intervalStatistics.p999 = data.getPercentile(99.9);
+					intervalStatistics.sum = data.getSum();
+				}
+
+				intervalStatistics.lastVersion.set(lastVersion.get());
+				statistics = intervalStatistics;
+
+				return true;
+			} finally {
+				calcLock.unlock();
 			}
-
-			intervalStatistics.lastVersion.set(lastVersion.get());
-			statistics = intervalStatistics;
-
-			return true;
 		}
 
 		public IntervalStatistics getStatistics(){

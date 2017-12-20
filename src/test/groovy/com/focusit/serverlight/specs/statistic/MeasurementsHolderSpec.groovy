@@ -84,8 +84,8 @@ class MeasurementsHolderSpec extends Specification {
 
     def "holder can use timezone to initialize time intervals"(){
         when:
-        MeasurementsHolder holder_utc5 = new MeasurementsHolder(60 * 60 * 1000, 48 * 60 * 60 * 1000, "America/New_York")
-        MeasurementsHolder holder_utc = new MeasurementsHolder(60 * 60 * 1000, 48 * 60 * 60 * 1000, "Asia/Singapore")
+        MeasurementsHolder holder_utc5 = new MeasurementsHolder(null, 60 * 60 * 1000, 48 * 60 * 60 * 1000, "America/New_York")
+        MeasurementsHolder holder_utc = new MeasurementsHolder(null, 60 * 60 * 1000, 48 * 60 * 60 * 1000, "Asia/Singapore")
         then:
         holder_utc.getStartTimeMs()!=holder_utc5.getStartTimeMs()
     }
@@ -159,5 +159,9 @@ class MeasurementsHolderSpec extends Specification {
 
         then:
         thrown(IllegalArgumentException)
+    }
+
+    def "holder can freeze to sweep measurements"(){
+
     }
 }
