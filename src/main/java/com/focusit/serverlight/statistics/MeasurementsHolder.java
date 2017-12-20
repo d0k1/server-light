@@ -9,6 +9,8 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Holds measurements grouped by time interval to calculate basic descriptive statistics
@@ -21,21 +23,30 @@ public class MeasurementsHolder implements Serializable {
 	private final long startTimeMs;
 	
 	public MeasurementsHolder(long itemDurationMs, long maxTimeMs) {
-		this(itemDurationMs, maxTimeMs, Calendar.getInstance().getTimeZone().getID());
+		this(null, itemDurationMs, maxTimeMs, Calendar.getInstance().getTimeZone().getID());
 	}
 
-	public MeasurementsHolder(long itemDurationMs, long maxTimeMs, String timezone) {
+	public MeasurementsHolder(long startTimeMs, long itemDurationMs, long maxTimeMs) {
+		this(startTimeMs, itemDurationMs, maxTimeMs, Calendar.getInstance().getTimeZone().getID());
+	}
+
+	public MeasurementsHolder(Long startMs, long itemDurationMs, long maxTimeMs, String timezone) {
 		this.itemDurationMs = itemDurationMs;
 		this.maxTimeMs = maxTimeMs;
 
-		Calendar cal = Calendar.getInstance();
-		cal.setTimeZone(TimeZone.getTimeZone(timezone));
-		cal.set(Calendar.HOUR_OF_DAY, 0);
-		cal.set(Calendar.MINUTE, 0);
-		cal.set(Calendar.SECOND, 0);
-		cal.set(Calendar.MILLISECOND, 0);
+		if(startMs==null) {
+			Calendar cal = Calendar.getInstance();
+			cal.setTimeZone(TimeZone.getTimeZone(timezone));
+			cal.set(Calendar.HOUR_OF_DAY, 0);
+			cal.set(Calendar.MINUTE, 0);
+			cal.set(Calendar.SECOND, 0);
+			cal.set(Calendar.MILLISECOND, 0);
 
-		startTimeMs = cal.getTime().getTime();
+			startTimeMs = cal.getTime().getTime();
+		} else {
+			startTimeMs = (startMs / itemDurationMs) * itemDurationMs;
+		}
+
 		init();
 	}
 
@@ -49,6 +60,9 @@ public class MeasurementsHolder implements Serializable {
 
 	public IntervalStatistics getIntervalStatistics(long timeMs) {
 		StatisticItem v = items.get(getTimeKey(timeMs));
+		if(v==null){
+			return null;
+		}
 		v.calculate();
 
 		return v.getStatistics();
@@ -98,35 +112,70 @@ public class MeasurementsHolder implements Serializable {
 		return key;
 	}
 
-	public void addData(long millis, double value) {
+	public long addData(long millis, double value) {
 		long key = getTimeKey(millis);
 		items.get(key).addData(value);
+		return key;
+	}
+
+	public void freeze(long millis){
+		long key = getTimeKey(millis);
+		items.get(key).freeze();
 	}
 
 	class StatisticItem {
 		private ConcurrentLinkedQueue<Double> storage = new ConcurrentLinkedQueue<>();
 		private volatile IntervalStatistics statistics = new IntervalStatistics();
+		private final AtomicLong lastVersion = new AtomicLong();
+		private final AtomicBoolean freezed = new AtomicBoolean(false);
 
-		public void addData(double item) {
-			storage.add(item);
+		public void freeze(){
+			freezed.set(true);
+			storage.clear();
 		}
 
-		public synchronized void calculate(){
-			DescriptiveStatistics data = new DescriptiveStatistics();
-			storage.forEach(item-> data.addValue(item));
-			IntervalStatistics item = new IntervalStatistics();
-			item.count = data.getN();
-			item.max = data.getMax();
-			item.mean = data.getMean();
-			item.min = data.getMin();
-			item.stddev = data.getStandardDeviation();
-			item.p50 = data.getPercentile(50);
-			item.p95 = data.getPercentile(95);
-			item.p99 = data.getPercentile(99);
-			item.p999 = data.getPercentile(99.9);
-			item.sum = data.getSum();
+		public boolean addData(double item) {
+			if(freezed.get()){
+				return false;
+			}
 
-			statistics = item;
+			lastVersion.incrementAndGet();
+			storage.add(item);
+			return true;
+		}
+
+		public synchronized boolean calculate(){
+			IntervalStatistics oldStat = statistics;
+
+			if(oldStat.lastVersion!=null && oldStat.lastVersion.get()==lastVersion.get()){
+				return true;
+			}
+
+			if(freezed.get()){
+				return false;
+			}
+
+			IntervalStatistics intervalStatistics = new IntervalStatistics();
+
+			if(!storage.isEmpty()){
+				DescriptiveStatistics data = new DescriptiveStatistics();
+				storage.forEach(item-> data.addValue(item));
+				intervalStatistics.count = data.getN();
+				intervalStatistics.max = data.getMax();
+				intervalStatistics.mean = data.getMean();
+				intervalStatistics.min = data.getMin();
+				intervalStatistics.stddev = data.getStandardDeviation();
+				intervalStatistics.p50 = data.getPercentile(50);
+				intervalStatistics.p95 = data.getPercentile(95);
+				intervalStatistics.p99 = data.getPercentile(99);
+				intervalStatistics.p999 = data.getPercentile(99.9);
+				intervalStatistics.sum = data.getSum();
+			}
+
+			intervalStatistics.lastVersion.set(lastVersion.get());
+			statistics = intervalStatistics;
+
+			return true;
 		}
 
 		public IntervalStatistics getStatistics(){

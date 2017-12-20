@@ -125,4 +125,39 @@ class MeasurementsHolderSpec extends Specification {
         iterator.next()==1.0
         iterator.next()==2.0
     }
+
+    def "holder saves interval statistics version"(){
+        given:
+        MeasurementsHolder holder = new MeasurementsHolder(60 * 60 * 1000, 48 * 60 * 60 * 1000)
+        long date = new Date().getTime()
+
+        when:
+        holder.addData(date, 1.0)
+        holder.addData(date, 2.0)
+
+        IntervalStatistics stat = holder.getIntervalStatistics(date + 2)
+        IntervalStatistics stat2 = holder.getIntervalStatistics(date + 2)
+
+        holder.addData(date, 3.0)
+        IntervalStatistics stat3 = holder.getIntervalStatistics(date + 3)
+
+        then:
+        stat.lastVersion.get()==stat2.lastVersion.get()
+        stat3.lastVersion.get()!=stat2.lastVersion.get()
+    }
+
+    def "holder can start interval from current time"(){
+        given:
+        long date = new Date().getTime()
+        MeasurementsHolder holder = new MeasurementsHolder(date, 5*1000, 60*1000);
+
+        when:
+        holder.addData(date+10, 1.0)
+        holder.addData(date+20, 2.0)
+
+        holder.getIntervalStatistics(date - 10*1000);
+
+        then:
+        thrown(IllegalArgumentException)
+    }
 }
