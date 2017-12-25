@@ -161,6 +161,10 @@ class MeasurementsHolderSpec extends Specification {
         thrown(IllegalArgumentException)
     }
 
+    def "get key returns initial timestamp of a time interval"(){
+
+    }
+
     def "holder can freeze to sweep measurements"(){
 
     }

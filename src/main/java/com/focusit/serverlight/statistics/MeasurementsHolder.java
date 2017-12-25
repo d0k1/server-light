@@ -17,7 +17,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * Holds measurements grouped by time interval to calculate basic descriptive statistics
  */
 public class MeasurementsHolder implements Serializable {
-	
 	private final ConcurrentHashMap<Long, StatisticItem> items = new ConcurrentHashMap<>();
 	private final long itemDurationMs;
 	private final long maxTimeMs;

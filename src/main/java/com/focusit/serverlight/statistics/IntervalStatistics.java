@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IntervalStatistics implements Serializable {
+    public long timestamp;
+    public long duration;
     public double min;
     public double max;
     public double mean;
@@ -22,6 +24,8 @@ public class IntervalStatistics implements Serializable {
 
     Map<String, Object> asMap(){
         Map<String, Object> result = new HashMap<>();
+        result.put("timestamp", timestamp);
+        result.put("duration", duration);
         result.put("min", min);
         result.put("max", max);
         result.put("mean", mean);
