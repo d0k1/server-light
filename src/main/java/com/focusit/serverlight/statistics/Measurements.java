@@ -12,22 +12,23 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Measurements {
 
-    private AtomicReference<StatisticItem> data = new AtomicReference<>();
-    private ConcurrentLinkedQueue<StatisticItem> history = new ConcurrentLinkedQueue<>();
+    private AtomicReference<StatisticCalculator> data = new AtomicReference<>();
+    private ConcurrentLinkedQueue<StatisticCalculator> history = new ConcurrentLinkedQueue<>();
     private final ReentrantLock lock = new ReentrantLock();
     private final long durationMs;
     private final AtomicLong count = new AtomicLong(0L);
     private final long capacity;
 
-    public Measurements(long durationMs, long capacity){
-        this.durationMs = durationMs;
-        this.capacity = capacity;
-    }
-
-    public Measurements(long durationMs, long totalTime, TimeUnit totalTimeUnits) {
-        this.durationMs = durationMs;
+    public Measurements(long duration, TimeUnit durationUnits, long totalTime, TimeUnit totalTimeUnits) {
+        this.durationMs = durationUnits.toMillis(duration);
         long maxTime = totalTimeUnits.toMillis(totalTime);
-        this.capacity = maxTime / durationMs;
+
+        long intervals = maxTime / durationMs;
+        if(maxTime % durationMs!=0){
+            intervals+=1;
+        }
+
+        this.capacity = intervals;
     }
 
     public long getIntervalTimeDurationMs(){
@@ -42,12 +43,12 @@ public class Measurements {
         return capacity;
     }
 
-    private StatisticItem newInterval(long timestamp, long duration){
-        StatisticItem statistics = data.get();
+    private StatisticCalculator newInterval(long timestamp, long duration){
+        StatisticCalculator statistics = data.get();
         if(statistics!=null) {
             statistics.freeze();
         }
-        StatisticItem newStatistics = new StatisticItem(timestamp, duration);
+        StatisticCalculator newStatistics = new StatisticCalculator(timestamp);
         data.set(newStatistics);
         long currentCount = count.get();
         if(currentCount+1>capacity) {
@@ -66,7 +67,7 @@ public class Measurements {
     }
 
     public void addData(double value){
-        StatisticItem statistics = data.get();
+        StatisticCalculator statistics = data.get();
         long timestamp = new Date().getTime();
 
         if(statistics==null || timestamp>statistics.getTimestamp()+durationMs){
@@ -87,8 +88,8 @@ public class Measurements {
         statistics.addData(value);
     }
 
-    public Collection<StatisticItem> getData(){
-        List<StatisticItem> result = new ArrayList<>();
+    public Collection<StatisticCalculator> getData(){
+        List<StatisticCalculator> result = new ArrayList<>();
         history.forEach(item->{item.calculate();result.add(item);});
         return result;
     }

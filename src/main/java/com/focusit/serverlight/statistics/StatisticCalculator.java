@@ -4,21 +4,20 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class StatisticItem {
+/**
+ * Internal calculator
+ */
+class StatisticCalculator {
     private final long timestamp;
-    private final long duration;
     private ConcurrentLinkedQueue<Double> storage = new ConcurrentLinkedQueue<>();
-    private volatile IntervalStatistics statistics = new IntervalStatistics();
-    private final AtomicLong lastVersion = new AtomicLong();
+    private volatile CalculatedStatistics statistics = new CalculatedStatistics();
     private final AtomicBoolean freezed = new AtomicBoolean(false);
     private final ReentrantLock calcLock = new ReentrantLock();
 
-    public StatisticItem(long timestamp, long duration) {
+    public StatisticCalculator(long timestamp) {
         this.timestamp = timestamp;
-        this.duration = duration;
     }
 
     public void freeze(){
@@ -39,25 +38,18 @@ public class StatisticItem {
             return false;
         }
 
-        lastVersion.incrementAndGet();
         storage.add(item);
         return true;
     }
 
     public boolean calculate(){
-        IntervalStatistics oldStat = statistics;
-
-        if (oldStat.lastVersion != null && oldStat.lastVersion.get() == lastVersion.get()) {
-            return true;
-        }
-
         if (freezed.get()) {
             return false;
         }
 
         calcLock.lock();
         try {
-            IntervalStatistics intervalStatistics = new IntervalStatistics();
+            CalculatedStatistics intervalStatistics = new CalculatedStatistics();
 
             if (!storage.isEmpty()) {
                 DescriptiveStatistics data = new DescriptiveStatistics();
@@ -74,7 +66,6 @@ public class StatisticItem {
                 intervalStatistics.sum = data.getSum();
             }
 
-            intervalStatistics.lastVersion.set(lastVersion.get());
             statistics = intervalStatistics;
 
             return true;
@@ -83,15 +74,11 @@ public class StatisticItem {
         }
     }
 
-    public IntervalStatistics getStatistics(){
+    public CalculatedStatistics getStatistics(){
         return statistics;
     }
 
     public long getTimestamp() {
         return timestamp;
-    }
-
-    public long getDuration() {
-        return duration;
     }
 }

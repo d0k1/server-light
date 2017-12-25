@@ -5,5 +5,6 @@ import java.util.List;
 
 public interface StatisticMBean {
     String getName();
+    void reset();
     List<CompositeData> getData();
 }
