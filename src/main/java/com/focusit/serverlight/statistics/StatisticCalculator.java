@@ -7,13 +7,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Internal calculator
+ * Internal statistic calculator
+ *
  */
 class StatisticCalculator {
     private final long timestamp;
     private ConcurrentLinkedQueue<Double> storage = new ConcurrentLinkedQueue<>();
     private volatile CalculatedStatistics statistics = new CalculatedStatistics();
-    private final AtomicBoolean freezed = new AtomicBoolean(false);
+    private final AtomicBoolean frozen = new AtomicBoolean(false);
     private final ReentrantLock calcLock = new ReentrantLock();
 
     public StatisticCalculator(long timestamp) {
@@ -23,9 +24,9 @@ class StatisticCalculator {
     public void freeze(){
         calcLock.lock();
         try {
-            if(!freezed.get()) {
+            if(!frozen.get()) {
                 calculate();
-                freezed.set(true);
+                frozen.set(true);
                 storage.clear();
             }
         } finally {
@@ -34,7 +35,7 @@ class StatisticCalculator {
     }
 
     public boolean addData(double item) {
-        if(freezed.get()){
+        if(frozen.get()){
             return false;
         }
 
@@ -43,7 +44,7 @@ class StatisticCalculator {
     }
 
     public boolean calculate(){
-        if (freezed.get()) {
+        if (frozen.get()) {
             return false;
         }
 

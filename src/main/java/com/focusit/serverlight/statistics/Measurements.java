@@ -10,13 +10,19 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Container to hold measurements.
+ * Uses fixed size queue to hold historical data
+ */
 public class Measurements {
 
     private AtomicReference<StatisticCalculator> data = new AtomicReference<>();
     private ConcurrentLinkedQueue<StatisticCalculator> history = new ConcurrentLinkedQueue<>();
     private final ReentrantLock lock = new ReentrantLock();
     private final long durationMs;
+    // field to get linked queue size in the faster possible way
     private final AtomicLong count = new AtomicLong(0L);
+    // limit for internal linked queue
     private final long capacity;
 
     public Measurements(long duration, TimeUnit durationUnits, long totalTime, TimeUnit totalTimeUnits) {
@@ -43,6 +49,14 @@ public class Measurements {
         return capacity;
     }
 
+    /**
+     * Method adds a new time interval into internal queue.
+     * Polls an the oldest item of the queue if needed to limit queue size
+     * Method in not thread safe so it if called within a critical section(via reentrant lock)
+     * @param timestamp
+     * @param duration
+     * @return
+     */
     private StatisticCalculator newInterval(long timestamp, long duration){
         StatisticCalculator statistics = data.get();
         if(statistics!=null) {

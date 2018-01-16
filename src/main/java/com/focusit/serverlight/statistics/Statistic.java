@@ -1,5 +1,8 @@
 package com.focusit.serverlight.statistics;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.management.*;
 import javax.management.openmbean.*;
 import java.lang.management.ManagementFactory;
@@ -24,7 +27,7 @@ public class Statistic implements StatisticMBean {
 	private volatile ObjectInstance mbeanInstance;
 	private final CompositeType compositeType = getCompositeType();
 	private String path;
-
+	private final static Logger LOG = LoggerFactory.getLogger(Statistic.class);
 	/**
 	 * Constructor
 	 *
@@ -50,8 +53,7 @@ public class Statistic implements StatisticMBean {
 	 * @return timestamp of the beginning of current time interval
 	 */
 	public void addData(double data) {
-	    Measurements localMeasurements = measurements;
-        localMeasurements.addData(data);
+		measurements.addData(data);
 	}
 
 	private CompositeType getCompositeType() {
@@ -61,7 +63,7 @@ public class Statistic implements StatisticMBean {
 					new String[]{"Date Time", "min", "max", "mean", "std dev", "50%", "95%", "99%", "99.9%", "sum", "count"},
 					new OpenType[]{SimpleType.DATE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.DOUBLE, SimpleType.LONG});
 		} catch (OpenDataException e) {
-			e.printStackTrace();
+			LOG.error(e.toString(), e);
 		}
 		return null;
 	}
@@ -90,7 +92,7 @@ public class Statistic implements StatisticMBean {
 				try {
 					result.add(getCompositeDataFromIntervalStatistics(v.getTimestamp(), v.getStatistics()));
 				} catch (OpenDataException e) {
-					e.printStackTrace(System.err);
+					LOG.error(e.toString(), e);
 				}
 			}
 		});
