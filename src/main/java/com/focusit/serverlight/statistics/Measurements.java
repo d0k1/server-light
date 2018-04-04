@@ -81,25 +81,34 @@ public class Measurements {
     }
 
     public void addData(double value){
-        StatisticCalculator statistics = data.get();
+        StatisticCalculator currentInterval = data.get();
         long timestamp = new Date().getTime();
 
-        if(statistics==null || timestamp>statistics.getTimestamp()+durationMs){
+        // Double check locking
+        if(currentInterval==null || timestamp>currentInterval.getTimestamp()+durationMs){
+
             lock.lock();
 
-            try{
-                if(statistics==null){
-                    timestamp = roundTime(timestamp, durationMs);
-                } else {
-                    timestamp = statistics.getTimestamp();
+            currentInterval = data.get();
+            timestamp = new Date().getTime();
+
+            if(currentInterval==null || timestamp>currentInterval.getTimestamp()+durationMs) {
+
+                try {
+                    if (currentInterval == null) {
+                        timestamp = roundTime(timestamp, durationMs);
+                    } else {
+                        timestamp = currentInterval.getTimestamp();
+                    }
+                    currentInterval = newInterval(timestamp + durationMs, durationMs);
+
+                } finally {
+                    lock.unlock();
                 }
-                statistics = newInterval(timestamp+durationMs, durationMs);
-            } finally {
-                lock.unlock();
             }
         }
 
-        statistics.addData(value);
+        currentInterval.addData(value);
     }
 
     public Collection<StatisticCalculator> getData(){

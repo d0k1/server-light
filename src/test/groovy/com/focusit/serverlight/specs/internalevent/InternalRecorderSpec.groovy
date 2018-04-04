@@ -1,4 +1,4 @@
-package groovy.com.focusit.serverlight.specs.internalevent
+package com.focusit.serverlight.specs.internalevent
 
 import com.focusit.serverlight.internalevent.InternalEventRecorderBuilder
 import org.awaitility.Duration
