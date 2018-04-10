@@ -89,22 +89,22 @@ public class Measurements {
 
             lock.lock();
 
-            currentInterval = data.get();
-            timestamp = new Date().getTime();
+            try {
+                currentInterval = data.get();
+                timestamp = new Date().getTime();
 
-            if(currentInterval==null || timestamp>currentInterval.getTimestamp()+durationMs) {
+                if(currentInterval==null || timestamp>currentInterval.getTimestamp()+durationMs) {
 
-                try {
-                    if (currentInterval == null) {
-                        timestamp = roundTime(timestamp, durationMs);
-                    } else {
-                        timestamp = currentInterval.getTimestamp();
-                    }
-                    currentInterval = newInterval(timestamp + durationMs, durationMs);
+                        if (currentInterval == null) {
+                            timestamp = roundTime(timestamp, durationMs);
+                        } else {
+                            timestamp = currentInterval.getTimestamp();
+                        }
+                        currentInterval = newInterval(timestamp + durationMs, durationMs);
 
-                } finally {
-                    lock.unlock();
                 }
+            } finally {
+                lock.unlock();
             }
         }
 
